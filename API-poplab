@@ -1,1 +1,40 @@
-import
+import sys
+import subprocess
+
+
+try:
+    import requests
+except ImportError:
+    print("The 'requests' library is not installed. Installing it now...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "requests"])
+    import requests
+
+import datetime
+
+def get_aircraft_info(icao24):
+    url = f"https://opensky-network.org/api/states/all?icao24={icao24}"
+    response = requests.get(url)
+    if response.status_code == 200:
+        data = response.json()
+        if data['states']:
+            return data['states'][0]
+    return None
+
+def format_position(info):
+    if info:
+        timestamp = datetime.datetime.fromtimestamp(info[3]).strftime('%Y-%m-%d %H:%M:%S')
+        return f"Last known position: Lat {info[6]}, Lon {info[5]} at {timestamp}"
+    return "No recent position data available"
+
+# ICAO24 codes for N350XX and N621MM
+
+icao24_taylor = "a835af" 
+icao24_tom = "a8f1b6"     
+
+print("Fetching data...")
+
+taylor_info = get_aircraft_info(icao24_taylor)
+tom_info = get_aircraft_info(icao24_tom)
+
+print(f"Taylor Swift's aircraft (N350XX): {format_position(taylor_info)}")
+print(f"Tom Cruise's aircraft (N621MM): {format_position(tom_info)}")
