@@ -1,0 +1,100 @@
+import requests
+import pandas as pd
+import locale
+
+# Set locale for currency formatting
+locale.setlocale(locale.LC_ALL, 'en_US.UTF-8')
+
+API_KEY = "YOUR_API_KEY" # Put your API key here
+BASE_URL = "https://yfapi.net"
+
+# Function to format currency values
+def format_currency(value):
+    if isinstance(value, (int, float)):
+        return f"${value:,.2f}"
+    return "N/A"
+
+# Function to fetch stock data
+def fetch_stock_data(tickers):
+    symbols = ",".join(tickers)
+    url = f"{BASE_URL}/v6/finance/quote?symbols={symbols}"
+    headers = {'x-api-key': API_KEY}
+    response = requests.get(url, headers=headers)
+    data = response.json()
+
+    if 'quoteResponse' in data and 'result' in data['quoteResponse']:
+        stocks = []
+        for stock in data['quoteResponse']['result']:
+            stocks.append({
+                "Ticker": stock.get("symbol", "N/A"),
+                "Company": stock.get("longName", "N/A"),
+                "Current Price": format_currency(stock.get("regularMarketPrice", "N/A"))
+            })
+        return stocks
+    return []
+
+# Function to fetch any module dynamically
+def fetch_dynamic_module(ticker, module):
+    url = f"{BASE_URL}/v11/finance/quoteSummary/{ticker}?modules={module}"
+    headers = {'x-api-key': API_KEY}
+    response = requests.get(url, headers=headers)
+    data = response.json()
+
+    if 'quoteSummary' in data and 'result' in data['quoteSummary']:
+        summary = data['quoteSummary']['result'][0]
+
+        if module in summary:
+            formatted_data = {
+                key: format_currency(value["raw"]) if isinstance(value, dict) and "raw" in value else value
+                for key, value in summary[module].items()
+            }
+            return formatted_data
+    return {"Error": "Module data not available"}
+
+# Function to fetch trending stocks with formatted currency
+def fetch_trending_stocks():
+    url = f"{BASE_URL}/v1/finance/trending/US"
+    headers = {'x-api-key': API_KEY}
+    response = requests.get(url, headers=headers)
+    data = response.json()
+
+    trending_list = []
+    if 'finance' in data and 'result' in data['finance'] and data['finance']['result']:
+        for stock in data['finance']['result'][0]['quotes']:
+            ticker = stock.get("symbol", "N/A")
+            additional_data = fetch_dynamic_module(ticker, "summaryDetail")
+            trending_list.append({
+                "Ticker": ticker,
+                "Company": stock.get("shortName", "N/A"),
+                "Current Price": format_currency(stock.get("regularMarketPrice", "N/A")),
+                "52 Week High": additional_data.get("fiftyTwoWeekHigh", "N/A"),
+                "52 Week Low": additional_data.get("fiftyTwoWeekLow", "N/A")
+            })
+    return trending_list
+
+# Main program
+def main():
+    tickers = input("Enter two or more stock symbols (comma-separated): ").upper().split(',')
+    stock_data = fetch_stock_data(tickers)
+
+    if stock_data:
+        print("\nStock Data:")
+        for stock in stock_data:
+            print(stock)
+
+        module_choice = input("Enter a module to fetch additional data (e.g., summaryDetail, financialData): ")
+        additional_info = fetch_dynamic_module(tickers[0], module_choice)
+        print("\nAdditional Stock Data:", additional_info)
+
+        print("\nTrending Stocks:")
+        trending_stocks = fetch_trending_stocks()
+        df = pd.DataFrame(trending_stocks)
+        print(df)
+
+    else:
+        print("No stock data found.")
+
+if __name__ == "__main__":
+    main()
+
+# I used Google Colab, class notes, and StackOverflow to help with this assignment.
