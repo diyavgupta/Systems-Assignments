@@ -1,0 +1,48 @@
+import requests
+
+def get_flight_data(api_key, tail_numbers):
+    base_url = "http://api.aviationstack.com/v1/flights"
+    results = []
+    
+    for tail_number in tail_numbers:
+        params = {
+            'access_key': api_key,
+            'reg_number': tail_number
+        }
+        
+        response = requests.get(base_url, params=params)
+        data = response.json()
+        
+        if 'data' in data and data['data']:
+            flight = data['data'][0]
+            info = {
+                'tail_number': tail_number,
+                'departure_airport': flight['departure']['airport'] if flight['departure'] else 'Unknown',
+                'departure_time': flight['departure']['actual'] if flight['departure'] else 'Unknown',
+                'arrival_airport': flight['arrival']['airport'] if flight['arrival'] else 'Unknown',
+                'arrival_time': flight['arrival']['actual'] if flight['arrival'] else 'Unknown',
+                'aircraft': flight['aircraft']['model'] if flight['aircraft'] else 'Unknown',
+                'status': flight['flight_status']
+            }
+            results.append(info)
+        else:
+            results.append({'tail_number': tail_number, 'error': 'No data found'})
+    
+    return results
+
+if __name__ == "__main__":
+    API_KEY = "YOUR_API_KEY"  # Replace with actual API key
+    tail_numbers = ["N350XX", "N621MM", "N628TS"]  # Tom Cruise, Taylor Swift, and Elon Musk's Flight details
+    
+    flight_info = get_flight_data(API_KEY, tail_numbers)
+    
+    for flight in flight_info:
+        print(f"Flight Data for {flight['tail_number']}:")
+        if 'error' in flight:
+            print(f"  Error: {flight['error']}")
+        else:
+            print(f"  Departure: {flight['departure_airport']} at {flight['departure_time']}")
+            print(f"  Arrival: {flight['arrival_airport']} at {flight['arrival_time']}")
+            print(f"  Aircraft Model: {flight['aircraft']}")
+            print(f"  Status: {flight['status']}")
+        print("-" * 40)
